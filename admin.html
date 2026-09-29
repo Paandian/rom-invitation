@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin - RSVP Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+      :root {
+        --admin-bg: #faf9f6;
+        --admin-card: #ffffff;
+        --admin-border: rgba(212, 165, 116, 0.2);
+        --admin-gold: #d4a574;
+        --admin-dark: #1a1a1a;
+        --admin-text: #1a1a1a;
+        --admin-text-secondary: #4a4a4a;
+        --admin-success: #27ae60;
+        --admin-danger: #c0392b;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: var(--admin-bg);
+        color: var(--admin-text);
+        line-height: 1.6;
+        min-height: 100vh;
+      }
+
+      /* Login Screen */
+      .login-screen {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-lg);
+      }
+
+      .login-card {
+        background: var(--admin-card);
+        border: 1px solid var(--admin-border);
+        border-radius: var(--radius-xl);
+        padding: var(--space-3xl) var(--space-xl);
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+        box-shadow: var(--shadow-medium);
+      }
+
+      .login-card h1 {
+        font-family: "Playfair Display", serif;
+        font-size: 2rem;
+        color: var(--admin-dark);
+        margin-bottom: var(--space-xs);
+      }
+
+      .login-card p {
+        color: var(--admin-text-secondary);
+        margin-bottom: var(--space-xl);
+      }
+
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      .login-form input {
+        padding: var(--space-md);
+        border: 1px solid var(--admin-border);
+        border-radius: var(--radius-md);
+        font-size: 1rem;
+        font-family: inherit;
+        transition: border-color var(--transition-fast);
+      }
+
+      .login-form input:focus {
+        outline: none;
+        border-color: var(--admin-gold);
+        box-shadow: var(--shadow-gold);
+      }
+
+      .login-btn {
+        background: var(--gradient-gold);
+        color: var(--admin-dark);
+        border: none;
+        padding: var(--space-md);
+        border-radius: var(--radius-full);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition-base);
+        font-family: inherit;
+      }
+
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-gold-strong);
+      }
+
+      .login-error {
+        color: var(--admin-danger);
+        font-size: 0.875rem;
+        min-height: 1.5em;
+      }
+
+      /* Dashboard */
+      .dashboard {
+        display: none;
+        padding: var(--space-xl) var(--space-md);
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-xl);
+        flex-wrap: wrap;
+        gap: var(--space-md);
+      }
+
+      .dashboard-header h1 {
+        font-family: "Playfair Display", serif;
+        font-size: 2rem;
+        color: var(--admin-dark);
+      }
+
+      .logout-btn {
+        background: transparent;
+        border: 1px solid var(--admin-border);
+        color: var(--admin-text-secondary);
+        padding: var(--space-sm) var(--space-lg);
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+
+      .logout-btn:hover {
+        border-color: var(--admin-danger);
+        color: var(--admin-danger);
+      }
+
+      /* Stats Cards */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+      }
+
+      .stat-card {
+        background: var(--admin-card);
+        border: 1px solid var(--admin-border);
+        border-radius: var(--radius-xl);
+        padding: var(--space-xl);
+        text-align: center;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .stat-value {
+        font-family: "Playfair Display", serif;
+        font-size: 3rem;
+        font-weight: 400;
+        color: var(--admin-gold);
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 0.875rem;
+        color: var(--admin-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: var(--space-xs);
+      }
+
+      .stat-card.yes .stat-value {
+        color: var(--admin-success);
+      }
+      .stat-card.no .stat-value {
+        color: var(--admin-danger);
+      }
+      .stat-card.total .stat-value {
+        color: var(--admin-gold);
+      }
+      .stat-card.guests .stat-value {
+        color: var(--admin-dark);
+      }
+
+      /* Filters */
+      .filters {
+        display: flex;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+        flex-wrap: wrap;
+      }
+
+      .filter-btn {
+        padding: var(--space-sm) var(--space-lg);
+        border: 1px solid var(--admin-border);
+        background: var(--admin-card);
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.875rem;
+        transition: all var(--transition-fast);
+      }
+
+      .filter-btn.active,
+      .filter-btn:hover {
+        border-color: var(--admin-gold);
+        background: var(--color-champagne);
+      }
+
+      .export-btn {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        margin-left: auto;
+        background: var(--admin-gold);
+        border-color: var(--admin-gold);
+        color: var(--admin-dark);
+      }
+
+      .export-btn:hover {
+        background: var(--admin-gold);
+        border-color: var(--admin-gold);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-gold);
+      }
+
+      .export-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Table */
+      .table-container {
+        background: var(--admin-card);
+        border: 1px solid var(--admin-border);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: var(--space-md) var(--space-lg);
+        text-align: left;
+        border-bottom: 1px solid var(--admin-border);
+      }
+
+      th {
+        background: var(--color-white-soft);
+        font-family: var(--font-secondary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--admin-text-secondary);
+      }
+
+      td {
+        font-size: 0.875rem;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: var(--color-champagne);
+      }
+
+      .attendance-badge {
+        display: inline-block;
+        padding: var(--space-xs) var(--space-md);
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .attendance-badge.yes {
+        background: rgba(39, 174, 96, 0.15);
+        color: var(--admin-success);
+      }
+
+      .attendance-badge.no {
+        background: rgba(192, 57, 43, 0.15);
+        color: var(--admin-danger);
+      }
+
+      .message-cell {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: var(--space-3xl);
+        color: var(--admin-text-secondary);
+      }
+
+      .empty-state svg {
+        width: 64px;
+        height: 64px;
+        color: var(--admin-border);
+        margin-bottom: var(--space-md);
+      }
+
+      /* Mobile */
+      @media (max-width: 768px) {
+        .table-container {
+          overflow-x: auto;
+        }
+
+        table {
+          min-width: 600px;
+        }
+
+        .stat-value {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="login-screen">
+      <div class="login-card">
+        <h1>Admin Access</h1>
+        <p>Enter the admin password to view RSVP dashboard</p>
+        <form class="login-form" id="login-form">
+          <input
+            type="password"
+            id="admin-password"
+            placeholder="Enter password"
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit" class="login-btn">Access Dashboard</button>
+          <p class="login-error" id="login-error"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard" id="dashboard">
+      <header class="dashboard-header">
+        <h1>RSVP Dashboard</h1>
+        <button class="logout-btn" id="logout-btn">Logout</button>
+      </header>
+
+      <div class="stats-grid">
+        <div class="stat-card total">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total RSVPs</div>
+        </div>
+        <div class="stat-card yes">
+          <div class="stat-value" id="stat-yes">0</div>
+          <div class="stat-label">Attending</div>
+        </div>
+        <div class="stat-card no">
+          <div class="stat-value" id="stat-no">0</div>
+          <div class="stat-label">Not Attending</div>
+        </div>
+        <div class="stat-card guests">
+          <div class="stat-value" id="stat-guests">0</div>
+          <div class="stat-label">Total Guests</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="yes">Attending</button>
+        <button class="filter-btn" data-filter="no">Not Attending</button>
+        <button class="filter-btn export-btn" id="export-btn" title="Export to Excel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span>Export</span>
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table id="rsvp-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Guests</th>
+              <th>Attendance</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody id="rsvp-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" hidden>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <p>No RSVPs yet</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Admin password - CHANGE THIS!
+      /// const ADMIN_PASSWORD = 'your-secret-password-here';
+      const ADMIN_PASSWORD = "123456";
+
+      // Storage key
+      const STORAGE_KEY = "rsvp_data";
+
+      // Elements
+      const loginScreen = document.getElementById("login-screen");
+      const dashboard = document.getElementById("dashboard");
+      const loginForm = document.getElementById("login-form");
+      const loginError = document.getElementById("login-error");
+      const logoutBtn = document.getElementById("logout-btn");
+      const rsvpTbody = document.getElementById("rsvp-tbody");
+      const emptyState = document.getElementById("empty-state");
+
+      // Stats elements
+      const statTotal = document.getElementById("stat-total");
+      const statYes = document.getElementById("stat-yes");
+      const statNo = document.getElementById("stat-no");
+      const statGuests = document.getElementById("stat-guests");
+
+      // Filter buttons
+      const filterBtns = document.querySelectorAll(".filter-btn");
+
+      // Check if already logged in
+      if (sessionStorage.getItem("admin_logged_in") === "true") {
+        showDashboard();
+      }
+
+      // Login
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const password = document.getElementById("admin-password").value;
+        if (password === ADMIN_PASSWORD) {
+          sessionStorage.setItem("admin_logged_in", "true");
+          showDashboard();
+        } else {
+          loginError.textContent = "Incorrect password. Please try again.";
+        }
+      });
+
+      // Logout
+      logoutBtn.addEventListener("click", () => {
+        sessionStorage.removeItem("admin_logged_in");
+        dashboard.style.display = "none";
+        loginScreen.style.display = "flex";
+      });
+
+      function showDashboard() {
+        loginScreen.style.display = "none";
+        dashboard.style.display = "block";
+        loadRSVPs();
+      }
+
+async function loadRSVPs() {
+        const isLocal = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.protocol === 'file:';
+        let rsvps = [];
+        
+        if (isLocal) {
+            // Local: read directly from localStorage
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) rsvps = JSON.parse(stored);
+        } else {
+            // Production: try Netlify Function
+            try {
+                const response = await fetch('/.netlify/functions/rsvp');
+                if (response.ok) {
+                    const data = await response.json();
+                    rsvps = data.rsvps || [];
+                } else {
+                    // Fallback to localStorage
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) rsvps = JSON.parse(stored);
+                }
+            } catch (err) {
+                console.error('Failed to load RSVPs:', err);
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) rsvps = JSON.parse(stored);
+            }
+        }
+        
+        renderDashboard(rsvps);
+    }
+
+      function renderDashboard(rsvps) {
+        // Store all RSVPs globally for export
+        window.allRSVPs = rsvps;
+        
+        // Update stats - only count attending guests
+        const total = rsvps.length;
+        const yes = rsvps.filter((r) => r.attendance === "yes").length;
+        const no = rsvps.filter((r) => r.attendance === "no").length;
+        const guests = rsvps
+          .filter((r) => r.attendance === "yes")
+          .reduce((sum, r) => sum + (parseInt(r.guests) || 0), 0);
+
+        statTotal.textContent = total;
+        statYes.textContent = yes;
+        statNo.textContent = no;
+        statGuests.textContent = guests;
+
+        // Render table
+        if (rsvps.length === 0) {
+          rsvpTbody.innerHTML = "";
+          emptyState.hidden = false;
+          document.getElementById("rsvp-table").querySelector("thead").hidden = true;
+          return;
+        }
+
+        emptyState.hidden = true;
+        document.getElementById("rsvp-table").querySelector("thead").hidden = false;
+
+        // Sort by date (newest first)
+        rsvps.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+        rsvpTbody.innerHTML = rsvps
+          .map(
+            (r) => `
+                <tr>
+                    <td>${formatDate(r.submittedAt)}</td>
+                    <td>${escapeHtml(r.name)}</td>
+                    <td>${escapeHtml(r.email)}</td>
+                    <td>${escapeHtml(r.phone || "-")}</td>
+                    <td>${r.attendance === "yes" ? r.guests : "-"}</td>
+                        <td><span class="attendance-badge ${r.attendance}">${r.attendance === "yes" ? "Attending" : "Not Attending"}</span></td>
+                    <td class="message-cell">${escapeHtml(r.message || "-")}</td>
+                </tr>
+            `,
+          )
+          .join("");
+
+        // Add export button handler
+        const exportBtn = document.getElementById("export-btn");
+        if (exportBtn) {
+          exportBtn.onclick = exportToExcel;
+        }
+      }
+
+      function exportToExcel() {
+        if (!window.allRSVPs || window.allRSVPs.length === 0) {
+          alert("No data to export");
+          return;
+        }
+
+        // Prepare data for Excel
+        const exportData = window.allRSVPs.map((r) => ({
+          "Date Submitted": formatDate(r.submittedAt),
+          "Name": r.name,
+          "Email": r.email,
+          "Phone": r.phone || "-",
+          "Guests": r.attendance === "yes" ? r.guests : "0",
+          "Attendance": r.attendance === "yes" ? "Attending" : "Not Attending",
+          "Message": r.message || "-"
+        }));
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportData);
+
+        // Set column widths
+        ws['!cols'] = [
+          { wch: 20 }, // Date
+          { wch: 25 }, // Name
+          { wch: 30 }, // Email
+          { wch: 20 }, // Phone
+          { wch: 8 },  // Guests
+          { wch: 15 }, // Attendance
+          { wch: 40 }  // Message
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "RSVP List");
+
+        // Generate filename with date
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const filename = `RSVP_List_${dateStr}.xlsx`;
+
+        // Download
+        XLSX.writeFile(wb, filename);
+      }
+
+      // Filter buttons
+      let currentFilter = "all";
+      document.querySelectorAll(".filter-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".filter-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentFilter = btn.dataset.filter;
+          loadRSVPs(); // Reload and filter
+        });
+      });
+
+      function formatDate(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function escapeHtml(text) {
+        if (!text) return "-";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>

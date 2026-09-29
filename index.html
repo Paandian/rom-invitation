@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Engagement Ceremony Invitation - [Bride Name] & [Groom Name]">
+    <meta name="theme-color" content="#1a1a1a">
+    
+    <!-- Open Graph / WhatsApp Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Swarna & Soorya - Engagement Ceremony">
+    <meta property="og:description" content="You are cordially invited to celebrate our union">
+    <meta property="og:image" content="assets/og-preview.svg">
+    <meta property="og:url" content="https://your-domain.com">
+    <meta property="og:site_name" content="ROM Invitation">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Swarna & Soorya - Engagement Ceremony">
+    <meta name="twitter:description" content="You are cordially invited to celebrate our union">
+    <meta name="twitter:image" content="assets/og-preview.svg">
+    
+    <!-- Icons -->
+    <link rel="apple-touch-icon" href="assets/icon-192.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="assets/icon-192.svg">
+    <link rel="icon" type="image/svg+xml" sizes="32x32" href="assets/icon-32.svg">
+    <link rel="icon" type="image/svg+xml" sizes="16x16" href="assets/icon-16.svg">
+    <link rel="manifest" href="manifest.json">
+    
+    <title>[Bride Name] &amp; [Groom Name] - Engagement Ceremony</title>
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" as="style" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen" role="status" aria-label="Loading invitation">
+        <div class="loading-content">
+            <div class="loading-ring"></div>
+            <p class="loading-text">Preparing your invitation...</p>
+        </div>
+    </div>
+
+    <!-- Music Control Overlay -->
+    <div id="music-overlay" class="music-overlay" role="dialog" aria-label="Background music selection" hidden style="display: none;">
+        <div class="music-overlay-content">
+            <div class="music-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+            </div>
+            <h2>Background Music</h2>
+            <p class="music-subtitle">Choose your preferred melody</p>
+            
+            <div class="music-options">
+                <button type="button" class="music-option" data-track="default" aria-label="Default romantic melody">
+                    <span class="music-option-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </span>
+                    <span class="music-option-label">Default Melody</span>
+                </button>
+                
+                <button type="button" class="music-option" data-track="custom" aria-label="Upload your own music">
+                    <span class="music-option-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </span>
+                    <span class="music-option-label">Upload from Device</span>
+                </button>
+            </div>
+            
+            <input type="file" id="music-file-input" accept="audio/*" hidden aria-label="Select music file">
+            
+            <button type="button" id="skip-music" class="skip-music" aria-label="Continue without music">
+                Continue without music
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Invitation Container -->
+    <div id="invitation" class="invitation" hidden>
+        <!-- Opening Cover -->
+        <section id="cover" class="cover-section" aria-labelledby="cover-title">
+            <div class="cover-background">
+                <div class="cover-gradient"></div>
+                <div class="cover-pattern" aria-hidden="true"></div>
+                <div class="gold-shine" aria-hidden="true"></div>
+            </div>
+            
+            <div class="cover-content">
+                <div class="envelope-wrapper" role="button" tabindex="0" aria-label="Open invitation" id="envelope-trigger">
+                    <div class="envelope" id="envelope">
+                        <div class="envelope-flap" aria-hidden="true"></div>
+                        <div class="envelope-body" aria-hidden="true">
+                            <div class="envelope-liner" aria-hidden="true"></div>
+                            <div class="wax-seal" aria-hidden="true">
+                                <span class="seal-initials" id="seal-initials">&amp;</span>
+                            </div>
+                        </div>
+                        <div class="envelope-shadow" aria-hidden="true"></div>
+                    </div>
+                    <p class="tap-hint" aria-hidden="true">
+                        <span class="tap-text">Tap to open</span>
+                        <span class="tap-icon" aria-hidden="true">↑</span>
+                    </p>
+                </div>
+                
+                <div class="cover-details" aria-hidden="true">
+                    <p class="cover-date" id="cover-date">24th OCTOBER 2026</p>
+                    <p class="cover-venue" id="cover-venue">Royal Sungei Ujong Club· Seremban, Negeri Sembilan, Malaysia</p>
+                </div>
+            </div>
+            
+            <div class="scroll-indicator" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 5v14M19 12l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main id="main-content" class="main-content">
+            <!-- Couple Names Section -->
+            <section class="couple-section" aria-labelledby="couple-title">
+                <div class="section-background" aria-hidden="true">
+                    <div class="floating-particles" id="couple-particles"></div>
+                </div>
+                
+                <div class="couple-content">
+                    <h1 id="couple-title" class="couple-names" data-bride="[Bride Name]" data-groom="[Groom Name]">
+                        <span class="bride-name" id="bride-name">[Bride Name]</span>
+                        <span class="ampersand" aria-hidden="true">&amp;</span>
+                        <span class="groom-name" id="groom-name">[Groom Name]</span>
+                    </h1>
+                    
+                    <div class="couple-divider" aria-hidden="true">
+                        <span class="divider-line"></span>
+                        <span class="divider-gem" aria-hidden="true">◆</span>
+                        <span class="divider-line"></span>
+                    </div>
+                    
+                    <p class="wedding-type" id="wedding-type">Engagement Ceremony</p>
+                </div>
+            </section>
+
+            <!-- Invitation Message -->
+            <section class="message-section" aria-labelledby="message-title">
+                <div class="section-background" aria-hidden="true">
+                    <div class="soft-glow" aria-hidden="true"></div>
+                </div>
+                
+                <div class="message-content">
+                    <h2 id="message-title" class="section-title visually-hidden">Our Invitation</h2>
+                    
+                    <div class="message-card">
+                        <div class="message-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                        </div>
+                        
+                        <blockquote class="invitation-message" id="invitation-message">
+                            <p>"With hearts full of love and gratitude,<br>we invite you to witness the beginning<br>of our forever."</p>
+                        </blockquote>
+                        
+                        <cite class="message-signature" id="message-signature">
+                            [Bride Name] &amp; [Groom Name]
+                        </cite>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Scratch to Reveal Date -->
+            <section class="reveal-section" aria-labelledby="reveal-title">
+                <div class="section-background" aria-hidden="true">
+                    <div class="reveal-particles" id="reveal-particles"></div>
+                </div>
+                
+                <div class="reveal-content">
+                    <h2 id="reveal-title" class="section-title visually-hidden">Wedding Date</h2>
+                    
+                    <div class="reveal-card" role="region" aria-label="Scratch to reveal wedding date">
+                        <div class="scratch-wrapper" id="scratch-wrapper">
+                            <canvas id="scratch-canvas" class="scratch-canvas" aria-hidden="true"></canvas>
+                            <div class="reveal-content-hidden" id="reveal-content-hidden" aria-live="polite">
+                                <div class="reveal-date-container">
+                                    <time class="reveal-date" id="reveal-date" datetime="2026-09-16T10:30:00+08:00">
+                                        <span class="reveal-day" id="reveal-day">24th October 2026</span>
+                                    </time>
+                                    <div class="reveal-time" id="reveal-time">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        <span>10:30 AM</span>
+                                    </div>
+                                </div>
+                                <p class="reveal-venue" id="reveal-venue">Royal Sungei Ujong Club · 2A, Jalan Dato Kelana Maamor, 70700 Seremban, Negeri Sembilan, Malaysia</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Countdown Timer -->
+            <section class="countdown-section" aria-labelledby="countdown-title">
+                <div class="section-background" aria-hidden="true">
+                    <div class="countdown-shimmer" aria-hidden="true"></div>
+                </div>
+                
+                <div class="countdown-content">
+                    <h2 id="countdown-title" class="section-title">Countdown to Forever</h2>
+                    
+                    <div class="countdown-timer" id="countdown-timer" role="timer" aria-live="polite" aria-label="Time until wedding">
+                        <div class="countdown-unit">
+                            <span class="countdown-value" id="countdown-days">00</span>
+                            <span class="countdown-label">Days</span>
+                        </div>
+                        <div class="countdown-separator" aria-hidden="true">:</div>
+                        <div class="countdown-unit">
+                            <span class="countdown-value" id="countdown-hours">00</span>
+                            <span class="countdown-label">Hours</span>
+                        </div>
+                        <div class="countdown-separator" aria-hidden="true">:</div>
+                        <div class="countdown-unit">
+                            <span class="countdown-value" id="countdown-minutes">00</span>
+                            <span class="countdown-label">Minutes</span>
+                        </div>
+                        <div class="countdown-separator" aria-hidden="true">:</div>
+                        <div class="countdown-unit">
+                            <span class="countdown-value" id="countdown-seconds">00</span>
+                            <span class="countdown-label">Seconds</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Couple Photos -->
+            <section class="photos-section" aria-labelledby="photos-title">
+                <div class="section-background" aria-hidden="true"></div>
+                
+                <div class="photos-content">
+                    <h2 id="photos-title" class="section-title">Our Journey</h2>
+                    
+                    <div class="photos-grid" id="photos-grid">
+                        <!-- Photos will be inserted via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gallery -->
+            <section class="gallery-section" aria-labelledby="gallery-title">
+                <div class="section-background" aria-hidden="true"></div>
+                
+                <div class="gallery-content">
+                    <h2 id="gallery-title" class="section-title">Memories</h2>
+                    
+                    <div class="gallery-grid" id="gallery-grid" role="list">
+                        <!-- Gallery items will be inserted via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Venue & Location -->
+            <section class="venue-section" aria-labelledby="venue-title">
+                <div class="section-background" aria-hidden="true">
+                    <div class="venue-map-pattern" aria-hidden="true"></div>
+                </div>
+                
+                <div class="venue-content">
+                    <h2 id="venue-title" class="section-title">Venue</h2>
+                    
+                    <div class="venue-card">
+                        <div class="venue-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                        </div>
+                        
+                        <address class="venue-details" id="venue-details">
+                            <p class="venue-name">Royal Sungei Ujong Club</p>
+                            <p class="venue-address">2A, Jalan Dato Kelana Maamor</p>
+                            <p class="venue-city">70700 Seremban, Negeri Sembilan, Malaysia</p>
+                        </address>
+                        
+                        <a href="https://goo.gl/maps/A1ftt7GNM91XMXBm9" target="_blank" rel="noopener noreferrer" class="map-button" id="map-button" aria-label="Open in Google Maps">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>Open in Maps</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="external-icon">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></path>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RSVP Section -->
+            <section class="rsvp-section" aria-labelledby="rsvp-title">
+                <div class="section-background" aria-hidden="true"></div>
+                
+                <div class="rsvp-content">
+                    <h2 id="rsvp-title" class="section-title">RSVP</h2>
+                    
+                    <div class="rsvp-card">
+                        <p class="rsvp-intro" id="rsvp-intro">
+                            Kindly let us know if you'll be joining us to celebrate this special day.
+                        </p>
+                        
+                        <form id="rsvp-form" class="rsvp-form" novalidate>
+                            <div class="form-group">
+                                <label for="rsvp-name">Full Name <span class="required" aria-hidden="true">*</span></label>
+                                <input type="text" id="rsvp-name" name="name" required autocomplete="name" placeholder="Your full name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rsvp-email">Email Address <span class="required" aria-hidden="true">*</span></label>
+                                <input type="email" id="rsvp-email" name="email" required autocomplete="email" placeholder="your@email.com">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rsvp-phone">Phone Number</label>
+                                <input type="tel" id="rsvp-phone" name="phone" autocomplete="tel" placeholder="+60 XXXX XXXX">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rsvp-attendance">Will you be attending? <span class="required" aria-hidden="true">*</span></label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="attendance" value="yes" required id="attendance-yes">
+                                        <span class="radio-custom"></span>
+                                        Yes, I'll be there
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="attendance" value="no" id="attendance-no">
+                                        <span class="radio-custom"></span>
+                                        Sorry, I can't make it
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rsvp-guests">Number of Guests <span class="required" aria-hidden="true">*</span></label>
+                                <select id="rsvp-guests" name="guests" required disabled>
+                                    <option value="">Select number of guests</option>
+                                    <option value="1">1 (Just me)</option>
+                                    <option value="2">2 (Me + 1)</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5+</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rsvp-message">Message for the Couple</label>
+                                <textarea id="rsvp-message" name="message" rows="3" placeholder="Your wishes, dietary requirements, etc."></textarea>
+                            </div>
+                            
+                            <button type="submit" class="rsvp-submit" id="rsvp-submit">
+                                <span class="submit-text">Submit RSVP</span>
+                                <span class="submit-loading" hidden>Submitting...</span>
+                            </button>
+                            
+                            <p class="rsvp-note" id="rsvp-note" aria-live="polite"></p>
+                        </form>
+                        
+                        <div id="rsvp-success" class="rsvp-success" hidden>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <h3>Thank You!</h3>
+                            <p>Your RSVP has been received. We look forward to celebrating with you!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Closing Section -->
+            <section class="closing-section" aria-labelledby="closing-title">
+                <div class="section-background" aria-hidden="true">
+                    <div class="closing-particles" id="closing-particles"></div>
+                </div>
+                
+                <div class="closing-content">
+                    <h2 id="closing-title" class="section-title visually-hidden">Closing</h2>
+                    
+                    <div class="closing-message">
+                        <p class="closing-text" id="closing-text">
+                            Your presence is the greatest gift.<br>We look forward to celebrating with you.
+                        </p>
+                        
+                        <div class="closing-names" id="closing-names">
+                            <span class="closing-bride" id="closing-bride">[Bride Name]</span>
+                            <span class="closing-amp" aria-hidden="true">&amp;</span>
+                            <span class="closing-groom" id="closing-groom">[Groom Name]</span>
+                        </div>
+                    </div>
+                    
+                    <div class="share-buttons" id="share-buttons" role="group" aria-label="Share invitation">
+                        <button type="button" class="share-btn whatsapp-share" data-platform="whatsapp" aria-label="Share via WhatsApp">
+                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.472.099-.174.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378 3.447 3.447 0 01-1.738-3.827 3.428 3.428 0 011.12-2.48c.783-.957 2.074-2.97 2.912-4.135.957-1.178 2.186-4.828 1.625-6.654-.518-1.69-2.135-1.69-2.634-1.083a11.278 11.278 0 00-1.527 3.847c-.177.77-.177 3.07 2.07 3.797.675.213 1.548-.075 1.927-.553.457-.575.78-1.56.78-2.303 0-.788-.287-2.428-.948-3.28a47.97 47.97 0 001.832-4.05 3.43 3.43 0 013.676 1.702A31.13 31.13 0 0112 16.047a31.13 31.13 0 015.04-1.33 3.43 3.43 0 013.841 2.315c.27.744.324 1.926-.098 3.396a9.925 9.925 0 01-2.46 2.406 9.872 9.872 0 01-5.086.257l-.054-.054z"></path>
+                            </svg>
+                            <span>Share</span>
+                        </button>
+                        
+                        <button type="button" class="share-btn copy-link" data-platform="copy" aria-label="Copy link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Link</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Floating Music Control -->
+        <button type="button" id="floating-music-btn" class="floating-music-btn" aria-label="Play music" aria-pressed="false" hidden>
+            <svg class="music-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <svg class="music-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" hidden>
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+            <span class="music-equalizer" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </span>
+        </button>
+
+        <!-- Petal Container -->
+        <div id="petal-container" class="petal-container" aria-hidden="true"></div>
+    </div>
+
+    <!-- Audio Element -->
+    <audio id="bg-music" preload="metadata" loop crossorigin="anonymous"></audio>
+
+    <!-- Configuration Script -->
+    <script src="config.js"></script>
+    <!-- Main Script -->
+    <script src="app.js"></script>
+</body>
+</html>
