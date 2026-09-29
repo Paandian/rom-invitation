@@ -1,0 +1,14 @@
+{
+  "name": "rom-invitation",
+  "version": "1.0.0",
+  "description": "ROM Invitation - Digital Wedding Invitation",
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
