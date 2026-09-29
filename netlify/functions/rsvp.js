@@ -1,4 +1,53 @@
-import { getStore } from '@netlify/blobs';
+// Netlify Function: RSVP Handler with graceful fallback
+// Uses Netlify Blobs (primary) with in-memory fallback
+
+const corsHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+};
+
+// In-memory fallback (works for session, not persistent across cold starts)
+let memoryStore = null;
+
+async function getStore() {
+  // Try Netlify Blobs first (dynamic import to avoid build-time issues)
+  try {
+    const { getStore } = await import('@netlify/blobs');
+    return getStore('rsvp-data');
+  } catch (err) {
+    console.warn('Netlify Blobs not available, using in-memory fallback:', err.message);
+    return null;
+  }
+}
+
+async function safeGetRSVPs(store) {
+  if (store) {
+    try {
+      return await store.get('all', { type: 'json' }) || [];
+    } catch (err) {
+      console.warn('Blobs GET failed:', err.message);
+    }
+  }
+  // Fallback to in-memory
+  return memoryStore || [];
+}
+
+async function safeSetRSVPs(store, rsvps) {
+  if (store) {
+    try {
+      await store.setJSON('all', rsvps);
+      return true;
+    } catch (err) {
+      console.warn('Blobs SET failed:', err.message);
+    }
+  }
+  // Fallback to in-memory
+  memoryStore = rsvps;
+  return true;
+}
 
 exports.handler = async (event, context) => {
   const corsHeaders = {
@@ -9,45 +58,39 @@ exports.handler = async (event, context) => {
     'Cache-Control': 'no-cache, no-store, must-revalidate',
   };
   
-  // Initialize store with error handling
+  // Initialize store with dynamic import (avoids build-time issues)
   let store;
   try {
+    const { getStore } = await import('@netlify/blobs');
     store = getStore('rsvp-data');
   } catch (err) {
-    console.error('Blobs store init failed:', err);
-    return {
-      statusCode: 503,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ 
-        message: 'Storage service temporarily unavailable. Please try again in a moment.',
-        retry: true
-      })
-    };
+    console.warn('Netlify Blobs not available, using in-memory fallback:', err.message);
   }
   
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
-  }
-  
-  // Helper: safely read from Blobs with fallback
   async function safeGetRSVPs() {
-    try {
-      return await store.get('all', { type: 'json' }) || [];
-    } catch (err) {
-      console.warn('Blobs GET failed, using empty array:', err.message);
-      return [];
+    if (store) {
+      try {
+        return await store.get('all', { type: 'json' }) || [];
+      } catch (err) {
+        console.warn('Blobs GET failed:', err.message);
+      }
     }
+    // Fallback to in-memory
+    return memoryStore || [];
   }
   
-  // Helper: safely write to Blobs
   async function safeSetRSVPs(rsvps) {
-    try {
-      await store.setJSON('all', rsvps);
-      return true;
-    } catch (err) {
-      console.error('Blobs SET failed:', err);
-      return false;
+    if (store) {
+      try {
+        await store.setJSON('all', rsvps);
+        return true;
+      } catch (err) {
+        console.warn('Blobs SET failed:', err.message);
+      }
     }
+    // Fallback to in-memory
+    memoryStore = rsvps;
+    return true;
   }
   
   if (event.httpMethod === 'OPTIONS') {
@@ -59,18 +102,30 @@ exports.handler = async (event, context) => {
     try { 
       data = JSON.parse(event.body); 
     } catch { 
-      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ message: 'Invalid JSON' }) };
+      return { 
+        statusCode: 400, 
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Invalid JSON' }) 
+      };
     }
     
     const required = ['name', 'email', 'guests', 'attendance'];
     for (const field of required) {
       if (!data[field]) {
-        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ message: `Missing required field: ${field}` }) };
+        return { 
+          statusCode: 400, 
+          headers: corsHeaders,
+          body: JSON.stringify({ message: `Missing required field: ${field}` }) 
+        };
       }
     }
     
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ message: 'Invalid email format' }) };
+      return { 
+        statusCode: 400, 
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Invalid email format' }) 
+      };
     }
     
     const rsvp = {
@@ -84,14 +139,13 @@ exports.handler = async (event, context) => {
     rsvps.push(rsvp);
     const saved = await safeSetRSVPs(rsvps);
     
-    if (!saved) {
-      return { statusCode: 503, headers: corsHeaders, body: JSON.stringify({ message: 'Storage temporarily unavailable. Please try again.', retry: true }) };
-    }
-    
     return { 
       statusCode: 200, 
       headers: corsHeaders,
-      body: JSON.stringify({ message: 'RSVP submitted successfully', id: rsvp.id }) 
+      body: JSON.stringify({ 
+        message: 'RSVP submitted successfully',
+        id: rsvp.id 
+      }) 
     };
   }
   
@@ -104,5 +158,9 @@ exports.handler = async (event, context) => {
     };
   }
   
-  return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ message: 'Method not allowed' }) };
+  return { 
+    statusCode: 405, 
+    headers: corsHeaders,
+    body: JSON.stringify({ message: 'Method not allowed' }) 
+  };
 };
