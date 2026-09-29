@@ -4,7 +4,7 @@
 const corsHeaders = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Cache-Control': 'no-cache, no-store, must-revalidate',
 };
@@ -49,11 +49,27 @@ async function safeSetRSVPs(store, rsvps) {
   return true;
 }
 
+async function safeDeleteRSVP(store, id) {
+  if (store) {
+    try {
+      const rsvps = await store.get('all', { type: 'json' }) || [];
+      const filtered = rsvps.filter(r => r.id !== id);
+      await store.setJSON('all', filtered);
+      return true;
+    } catch (err) {
+      console.warn('Blobs DELETE failed:', err.message);
+    }
+  }
+  // Fallback to in-memory
+  memoryStore = (memoryStore || []).filter(r => r.id !== id);
+  return true;
+}
+
 exports.handler = async (event, context) => {
   const corsHeaders = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
   };
@@ -90,6 +106,22 @@ exports.handler = async (event, context) => {
     }
     // Fallback to in-memory
     memoryStore = rsvps;
+    return true;
+  }
+  
+  async function safeDeleteRSVP(id) {
+    if (store) {
+      try {
+        const rsvps = await store.get('all', { type: 'json' }) || [];
+        const filtered = rsvps.filter(r => r.id !== id);
+        await store.setJSON('all', filtered);
+        return true;
+      } catch (err) {
+        console.warn('Blobs DELETE failed:', err.message);
+      }
+    }
+    // Fallback to in-memory
+    memoryStore = (memoryStore || []).filter(r => r.id !== id);
     return true;
   }
   
@@ -155,6 +187,32 @@ exports.handler = async (event, context) => {
       statusCode: 200, 
       headers: corsHeaders,
       body: JSON.stringify({ rsvps }) 
+    };
+  }
+  
+  if (event.httpMethod === 'DELETE') {
+    const id = event.queryStringParameters?.id;
+    if (!id) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Missing RSVP ID' })
+      };
+    }
+    
+    const deleted = await safeDeleteRSVP(id);
+    if (!deleted) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'RSVP not found' })
+      };
+    }
+    
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ message: 'RSVP deleted successfully' })
     };
   }
   
