@@ -1,0 +1,28 @@
+# Netlify Configuration
+[build]
+  publish = "."
+  command = "echo 'Static site - no build needed'"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundle = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/admin.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[functions."rsvp"]
+  included_files = ["data/**"]
