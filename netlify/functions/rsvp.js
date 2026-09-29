@@ -1,7 +1,17 @@
 import { getStore } from '@netlify/blobs';
 
 exports.handler = async (event, context) => {
-  const store = getStore('rsvp-data');
+  let store;
+  try {
+    store = getStore('rsvp-data');
+  } catch (err) {
+    console.error('Failed to initialize Blobs store:', err);
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Store initialization failed', error: err.message })
+    };
+  }
   
   const corsHeaders = {
     'Content-Type': 'application/json',
@@ -56,29 +66,47 @@ exports.handler = async (event, context) => {
       ip: event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown'
     };
     
-    // Read existing, add new, save to Blobs
-    const rsvps = await store.get('all', { type: 'json' }) || [];
-    rsvps.push(rsvp);
-    await store.setJSON('all', rsvps);
-    
-    // Return success
-    return { 
-      statusCode: 200, 
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        message: 'RSVP submitted successfully',
-        id: rsvp.id 
-      }) 
-    };
+    try {
+      // Read existing, add new, save to Blobs
+      const rsvps = await store.get('all', { type: 'json' }) || [];
+      rsvps.push(rsvp);
+      await store.setJSON('all', rsvps);
+      
+      // Return success
+      return { 
+        statusCode: 200, 
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          message: 'RSVP submitted successfully',
+          id: rsvp.id 
+        }) 
+      };
+    } catch (err) {
+      console.error('Blobs operation failed:', err);
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Failed to save RSVP', error: err.message })
+      };
+    }
   }
   
   if (event.httpMethod === 'GET') {
-    const rsvps = await store.get('all', { type: 'json' }) || [];
-    return { 
-      statusCode: 200, 
-      headers: corsHeaders,
-      body: JSON.stringify({ rsvps }) 
-    };
+    try {
+      const rsvps = await store.get('all', { type: 'json' }) || [];
+      return { 
+        statusCode: 200, 
+        headers: corsHeaders,
+        body: JSON.stringify({ rsvps }) 
+      };
+    } catch (err) {
+      console.error('Blobs GET failed:', err);
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Failed to load RSVPs', error: err.message })
+      };
+    }
   }
   
   return { 
