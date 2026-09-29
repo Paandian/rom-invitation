@@ -3,6 +3,18 @@ import { getStore } from '@netlify/blobs';
 exports.handler = async (event, context) => {
   const store = getStore('rsvp-data');
   
+  const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+  };
+  
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: corsHeaders, body: '' };
+  }
+  
   if (event.httpMethod === 'POST') {
     let data;
     try { 
@@ -10,6 +22,7 @@ exports.handler = async (event, context) => {
     } catch { 
       return { 
         statusCode: 400, 
+        headers: corsHeaders,
         body: JSON.stringify({ message: 'Invalid JSON' }) 
       };
     }
@@ -20,6 +33,7 @@ exports.handler = async (event, context) => {
       if (!data[field]) {
         return { 
           statusCode: 400, 
+          headers: corsHeaders,
           body: JSON.stringify({ message: `Missing required field: ${field}` }) 
         };
       }
@@ -29,6 +43,7 @@ exports.handler = async (event, context) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
       return { 
         statusCode: 400, 
+        headers: corsHeaders,
         body: JSON.stringify({ message: 'Invalid email format' }) 
       };
     }
@@ -49,7 +64,7 @@ exports.handler = async (event, context) => {
     // Return success
     return { 
       statusCode: 200, 
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
       body: JSON.stringify({ 
         message: 'RSVP submitted successfully',
         id: rsvp.id 
@@ -61,13 +76,14 @@ exports.handler = async (event, context) => {
     const rsvps = await store.get('all', { type: 'json' }) || [];
     return { 
       statusCode: 200, 
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
       body: JSON.stringify({ rsvps }) 
     };
   }
   
   return { 
     statusCode: 405, 
+    headers: corsHeaders,
     body: JSON.stringify({ message: 'Method not allowed' }) 
   };
 };
