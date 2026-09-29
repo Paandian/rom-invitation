@@ -1239,6 +1239,11 @@ function initRSVP() {
                        window.location.protocol === 'file:';
         
         try {
+            // Detect environment
+            const isLocal = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.protocol === 'file:';
+            
             if (isLocal) {
                 // Local storage fallback
                 const stored = localStorage.getItem('rsvp_data');
@@ -1250,7 +1255,7 @@ function initRSVP() {
                 if (successDiv) successDiv.hidden = false;
                 showNote('Thank you! Your RSVP has been received.', 'success');
             } else {
-                // Production: try Netlify function
+                // Production: MUST use Netlify function - NO localStorage fallback
                 const response = await fetch('/.netlify/functions/rsvp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1259,24 +1264,19 @@ function initRSVP() {
                 
                 const result = await response.json();
                 
-                if (response.ok) {
-                    form.hidden = true;
-                    if (successDiv) successDiv.hidden = false;
-                    showNote('Thank you! Your RSVP has been received.', 'success');
-                } else {
-                    throw new Error(result.message || 'Failed to submit RSVP');
+                if (!response.ok) {
+                    throw new Error(result.message || `Server error: ${response.status}`);
                 }
+                
+                form.hidden = true;
+                if (successDiv) successDiv.hidden = false;
+                showNote('Thank you! Your RSVP has been received.', 'success');
             }
         } catch (err) {
-            // Fallback to localStorage on any error
-            const stored = localStorage.getItem('rsvp_data');
-            const rsvps = stored ? JSON.parse(stored) : [];
-            rsvps.push(data);
-            localStorage.setItem('rsvp_data', JSON.stringify(rsvps));
-            
-            form.hidden = true;
-            if (successDiv) successDiv.hidden = false;
-            showNote('Thank you! Your RSVP has been received (saved locally).', 'success');
+            // NO localStorage fallback in production - show error to user
+            console.error('RSVP submission failed:', err);
+            showNote(`Failed to submit RSVP: ${err.message}. Please try again.`, 'error');
+            submitBtn.disabled = false;
         }
     });
     

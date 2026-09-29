@@ -500,7 +500,7 @@ async function loadRSVPs() {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) rsvps = JSON.parse(stored);
         } else {
-            // Production: try Netlify Function with cache busting
+            // Production: ONLY use Netlify Function - NO localStorage fallback
             try {
                 const cacheBust = Date.now();
                 const response = await fetch(`/.netlify/functions/rsvp?t=${cacheBust}`, {
@@ -511,13 +511,13 @@ async function loadRSVPs() {
                     const data = await response.json();
                     rsvps = data.rsvps || [];
                 } else {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
             } catch (err) {
                 console.error('Failed to load RSVPs from function:', err);
-                // Fallback to localStorage
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) rsvps = JSON.parse(stored);
+                // NO localStorage fallback - show error
+                rsvps = [];
+                alert('Failed to load RSVP data from server. Please refresh the page.');
             }
         }
         
