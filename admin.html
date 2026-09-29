@@ -658,11 +658,9 @@ async function loadRSVPs() {
 
         // Download
         XLSX.writeFile(wb, filename);
-      }
+}
 
-      });
-
-      // Delete RSVP handler
+// Delete RSVP handler
       rsvpTbody.addEventListener("click", async (e) => {
         const deleteBtn = e.target.closest(".delete-btn");
         if (!deleteBtn) return;
