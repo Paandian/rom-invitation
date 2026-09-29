@@ -686,9 +686,11 @@ async function loadRSVPs() {
           console.error("Delete failed:", err);
           alert("Failed to delete RSVP. Please try again.");
         }
-      });
+});
 
       // Filter buttons
+      let currentFilter = "all";
+      document.querySelectorAll(".filter-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           document
             .querySelectorAll(".filter-btn")
