@@ -184,9 +184,6 @@ exports.handler = async (event, context) => {
     }
   }
 
-  // In-memory fallback
-  let memoryStore = null;
-
   async function getAllRSVPs() {
     // 1. Try JSONBin.io (primary)
     const jsonBinData = await fetchFromJSONBin();
