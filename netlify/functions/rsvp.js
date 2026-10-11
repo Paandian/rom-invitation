@@ -1,130 +1,144 @@
-// Netlify Function: RSVP Handler with JSONBin.io + Email backup
-// All imports inside handler to avoid build-time issues
+// Netlify Function: RSVP Handler
+// Storage priority: JSONBin.io -> Netlify Blobs -> in-memory
+// Email backup via Resend (optional)
 
-const corsHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-};
-
-// In-memory fallback
+// In-memory fallback (last resort, survives warm invocations only)
 let memoryStore = null;
 
-// Helper: fetch from JSONBin.io
-async function fetchFromJSONBin() {
-  const binId = process.env.JSONBIN_BIN_ID || '';
-  const apiKey = process.env.JSONBIN_API_KEY || '';
-  
-  if (!binId || !apiKey) {
-    console.log('JSONBin not configured');
-    return null;
-  }
-  
-  try {
-    const response = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_BIN_ID}/latest`, {
-      headers: { 'X-Master-Key': process.env.JSONBIN_API_KEY }
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return data.record || [];
-    }
-    console.warn('JSONBin GET failed:', response.status);
-  } catch (err) {
-    console.warn('JSONBin GET error:', err.message);
-  }
-  return null;
+// Environment-driven config (set in Netlify Dashboard > Environment Variables)
+function getJSONBinConfig() {
+  return {
+    binId: process.env.JSONBIN_BIN_ID || '',
+    apiKey: process.env.JSONBIN_API_KEY || '',
+  };
 }
 
-async function saveToJSONBin(rsvps) {
-  const binId = process.env.JSONBIN_BIN_ID || '';
-  const apiKey = process.env.JSONBIN_API_KEY || '';
-  
-  if (!binId || !apiKey) return false;
-  
+// Read all RSVPs from JSONBin.io
+async function jsonBinRead() {
+  const { binId, apiKey } = getJSONBinConfig();
+  if (!binId || !apiKey) return null;
+
   try {
-    const response = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_BIN_ID}`, {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+      headers: { 'X-Master-Key': apiKey },
+    });
+    if (!res.ok) {
+      console.warn('JSONBin read failed:', res.status);
+      return null;
+    }
+    const data = await res.json();
+    return Array.isArray(data.record) ? data.record : [];
+  } catch (err) {
+    console.warn('JSONBin read error:', err.message);
+    return null;
+  }
+}
+
+// Write all RSVPs to JSONBin.io
+async function jsonBinWrite(rsvps) {
+  const { binId, apiKey } = getJSONBinConfig();
+  if (!binId || !apiKey) return false;
+
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Master-Key': process.env.JSONBIN_API_KEY
+        'X-Master-Key': apiKey,
       },
-      body: JSON.stringify(rsvps)
+      body: JSON.stringify(rsvps),
     });
-    return response.ok;
+    return res.ok;
   } catch (err) {
-    console.warn('JSONBin SET failed:', err.message);
+    console.warn('JSONBin write error:', err.message);
     return false;
   }
 }
 
-// In-memory fallback
-let memoryStore = null;
+// Read all RSVPs following the storage priority
+async function getRSVPs() {
+  // 1. JSONBin.io
+  const fromJsonBin = await jsonBinRead();
+  if (fromJsonBin) return fromJsonBin;
 
-async function getAllRSVPs() {
-  // 1. Try JSONBin.io (primary)
-  const jsonBinData = await fetchFromJSONBin();
-  if (jsonBinData) {
-    console.log('Loaded from JSONBin.io');
-    return jsonBinData;
-  }
-  
-  // 2. Try Netlify Blobs
+  // 2. Netlify Blobs
   try {
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('rsvp-data');
     const data = await store.get('all', { type: 'json' });
-    if (data) {
-      console.log('Loaded from Netlify Blobs');
-      return data;
-    }
+    if (data) return data;
   } catch (err) {
-    console.warn('Blobs GET failed:', err.message);
+    console.warn('Blobs read failed:', err.message);
   }
-  
-  // 3. In-memory fallback
-  console.log('Using in-memory fallback');
+
+  // 3. In-memory
   return memoryStore || [];
 }
 
-async function saveAllRSVPs(rsvps) {
-  // 1. Try JSONBin.io (primary)
-  const binId = process.env.JSONBIN_BIN_ID || '';
-  const apiKey = process.env.JSONBIN_API_KEY || '';
-  
-  if (binId && apiKey) {
-    try {
-      const response = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_BIN_ID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': process.env.JSONBIN_API_KEY
-        },
-        body: JSON.stringify(rsvps)
-      });
-      if (response.ok) return true;
-    } catch (err) {
-      console.warn('JSONBin SET failed:', err.message);
-    }
-  }
-  
-  // 2. Try Netlify Blobs
+// Write all RSVPs following the storage priority
+async function saveRSVPs(rsvps) {
+  // 1. JSONBin.io
+  if (await jsonBinWrite(rsvps)) return { ok: true, via: 'jsonbin' };
+
+  // 2. Netlify Blobs
   try {
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('rsvp-data');
     await store.setJSON('all', rsvps);
-    return true;
+    return { ok: true, via: 'blobs' };
   } catch (err) {
-    console.warn('Blobs SET failed:', err.message);
+    console.warn('Blobs write failed:', err.message);
   }
-  
-  // 3. In-memory fallback
+
+  // 3. In-memory
   memoryStore = rsvps;
-  return true;
+  return { ok: true, via: 'memory' };
 }
 
-const corsHeaders = {
+// Send an email backup of the RSVP via Resend
+async function sendEmailBackup(rsvp) {
+  const apiKey = process.env.RESEND_API_KEY || '';
+  if (!apiKey) return false;
+
+  const guestText = rsvp.attendance === 'yes' ? `${rsvp.guests} guest(s)` : 'Not attending';
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'RSVP Backup <onboarding@resend.dev>',
+        to: ['m.paandian@gmail.com'],
+        subject: `New RSVP: ${rsvp.name} (${guestText})`,
+        html: `
+          <h2>New RSVP Received</h2>
+          <table cellpadding="6" style="border-collapse:collapse;font-family:sans-serif">
+            <tr><td><strong>Name</strong></td><td>${rsvp.name}</td></tr>
+            <tr><td><strong>Email</strong></td><td>${rsvp.email}</td></tr>
+            <tr><td><strong>Phone</strong></td><td>${rsvp.phone || '-'}</td></tr>
+            <tr><td><strong>Attendance</strong></td><td>${rsvp.attendance === 'yes' ? 'Attending' : 'Not Attending'}</td></tr>
+            <tr><td><strong>Guests</strong></td><td>${guestText}</td></tr>
+            <tr><td><strong>Message</strong></td><td>${rsvp.message || '-'}</td></tr>
+            <tr><td><strong>Submitted</strong></td><td>${rsvp.submittedAt}</td></tr>
+            <tr><td><strong>IP</strong></td><td>${rsvp.ip}</td></tr>
+            <tr><td><strong>ID</strong></td><td>${rsvp.id}</td></tr>
+          </table>
+        `,
+      }),
+    });
+    if (!res.ok) console.warn('Resend failed:', res.status, await res.text());
+    return res.ok;
+  } catch (err) {
+    console.warn('Email backup error:', err.message);
+    return false;
+  }
+}
+
+// CORS headers
+const CORS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -132,243 +146,87 @@ const corsHeaders = {
   'Cache-Control': 'no-cache, no-store, must-revalidate',
 };
 
-exports.handler = async (event, context) => {
-  const corsHeaders = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-  };
-  
-  // Helper: fetch from JSONBin.io
-  async function fetchFromJSONBin() {
-    const binId = process.env.JSONBIN_BIN_ID || '';
-    const apiKey = process.env.JSONBIN_API_KEY || '';
-    
-    if (!binId || !apiKey) return null;
-    
-    try {
-      const response = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_BIN_ID}/latest`, {
-        headers: { 'X-Master-Key': process.env.JSONBIN_API_KEY }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return data.record || [];
-      }
-    } catch (err) {
-      console.warn('JSONBin GET error:', err.message);
-    }
-    return null;
-  }
+function respond(statusCode, bodyObj) {
+  return { statusCode, headers: CORS, body: JSON.stringify(bodyObj) };
+}
 
-  async function saveToJSONBin(rsvps) {
-    const binId = process.env.JSONBIN_BIN_ID || '';
-    const apiKey = process.env.JSONBIN_API_KEY || '';
-    
-    if (!binId || !apiKey) return false;
-    
-    try {
-      const response = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_BIN_ID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': process.env.JSONBIN_API_KEY
-        },
-        body: JSON.stringify(rsvps)
-      });
-      return response.ok;
-    } catch (err) {
-      console.warn('JSONBin SET failed:', err.message);
-      return false;
-    }
-  }
-
-  async function getAllRSVPs() {
-    // 1. Try JSONBin.io (primary)
-    const jsonBinData = await fetchFromJSONBin();
-    if (jsonBinData) {
-      console.log('Loaded from JSONBin.io');
-      return jsonBinData;
-    }
-    
-    // 2. Try Netlify Blobs
-    try {
-      const { getStore } = await import('@netlify/blobs');
-      const store = getStore('rsvp-data');
-      const data = await store.get('all', { type: 'json' });
-      if (data) {
-        console.log('Loaded from Netlify Blobs');
-        return data;
-      }
-    } catch (err) {
-      console.warn('Blobs GET failed:', err.message);
-    }
-    
-    // 3. In-memory fallback
-    console.log('Using in-memory fallback');
-    return memoryStore || [];
-  }
-
-  async function saveAllRSVPs(rsvps) {
-    // 1. Try JSONBin.io (primary)
-    const binId = process.env.JSONBIN_BIN_ID || '';
-    const apiKey = process.env.JSONBIN_API_KEY || '';
-    
-    if (binId && apiKey) {
-      try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${process.env.JSONBIN_BIN_ID}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': process.env.JSONBIN_API_KEY
-          },
-          body: JSON.stringify(rsvps)
-        });
-        if (response.ok) return true;
-      } catch (err) {
-        console.warn('JSONBin SET failed:', err.message);
-      }
-    }
-    
-    // 2. Try Netlify Blobs
-    try {
-      const { getStore } = await import('@netlify/blobs');
-      const store = getStore('rsvp-data');
-      await store.setJSON('all', rsvps);
-      return true;
-    } catch (err) {
-      console.warn('Blobs SET failed:', err.message);
-    }
-    
-    // 3. In-memory fallback
-    memoryStore = rsvps;
-    return true;
-  }
-
-  const corsHeaders = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-  };
-  
+exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
+    return { statusCode: 200, headers: CORS, body: '' };
   }
-  
-  if (event.httpMethod === 'POST') {
-    let data;
-    try { 
-      data = JSON.parse(event.body); 
-    } catch { 
-      return { 
-        statusCode: 400, 
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Invalid JSON' }) 
-      };
+
+  try {
+    // GET: list all RSVPs
+    if (event.httpMethod === 'GET') {
+      const rsvps = await getRSVPs();
+      return respond(200, { rsvps });
     }
-    
-    const required = ['name', 'email', 'guests', 'attendance'];
-    for (const field of required) {
-      if (!data[field]) {
-        return { 
-          statusCode: 400, 
-          headers: corsHeaders,
-          body: JSON.stringify({ message: `Missing required field: ${field}` }) 
-        };
+
+    // POST: create a new RSVP
+    if (event.httpMethod === 'POST') {
+      let data;
+      try {
+        data = JSON.parse(event.body);
+      } catch {
+        return respond(400, { message: 'Invalid JSON' });
       }
-    }
-    
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      return { 
-        statusCode: 400, 
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Invalid email format' }) 
+
+      const required = ['name', 'email', 'guests', 'attendance'];
+      for (const field of required) {
+        if (!data[field]) {
+          return respond(400, { message: `Missing required field: ${field}` });
+        }
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+        return respond(400, { message: 'Invalid email format' });
+      }
+
+      const rsvp = {
+        id: Date.now().toString(),
+        name: data.name,
+        email: data.email,
+        phone: data.phone || '',
+        guests: data.guests,
+        attendance: data.attendance,
+        message: data.message || '',
+        submittedAt: new Date().toISOString(),
+        ip: event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown',
       };
-    }
-    
-    const rsvp = {
-      id: Date.now().toString(),
-      ...data,
-      submittedAt: new Date().toISOString(),
-      ip: event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown'
-    };
-    
-    try {
-      const rsvps = await getAllRSVPs();
+
+      // Send email backup first (do not block response too long)
+      try {
+        await sendEmailBackup(rsvp);
+      } catch (err) {
+        console.warn('Backup email failed (non-fatal):', err.message);
+      }
+
+      // Persist
+      const rsvps = await getRSVPs();
       rsvps.push(rsvp);
-      await saveAllRSVPs(rsvps);
-      
-      return { 
-        statusCode: 200, 
-        headers: corsHeaders,
-        body: JSON.stringify({ 
-          message: 'RSVP submitted successfully',
-          id: rsvp.id 
-        }) 
-      };
-    } catch (err) {
-      console.error('POST error:', err);
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Failed to save RSVP', error: err.message })
-      };
+      await saveRSVPs(rsvps);
+
+      return respond(200, { message: 'RSVP submitted successfully', id: rsvp.id });
     }
-  }
-  
-  if (event.httpMethod === 'GET') {
-    try {
-      const rsvps = await getAllRSVPs();
-      return { 
-        statusCode: 200, 
-        headers: corsHeaders,
-        body: JSON.stringify({ rsvps }) 
-      };
-    } catch (err) {
-      console.error('GET error:', err);
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Failed to load RSVPs', error: err.message })
-      };
-    }
-  }
-  
-  if (event.httpMethod === 'DELETE') {
-    const id = event.queryStringParameters?.id;
-    if (!id) {
-      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ message: 'Missing RSVP ID' }) };
-    }
-    
-    try {
-      const rsvps = await getAllRSVPs();
-      const filtered = rsvps.filter(r => r.id !== id);
+
+    // DELETE: remove an RSVP by id
+    if (event.httpMethod === 'DELETE') {
+      const id = event.queryStringParameters && event.queryStringParameters.id;
+      if (!id) return respond(400, { message: 'Missing RSVP ID' });
+
+      const rsvps = await getRSVPs();
+      const filtered = rsvps.filter((r) => r.id !== id);
       if (filtered.length === rsvps.length) {
-        return { statusCode: 404, headers: corsHeaders, body: JSON.stringify({ message: 'RSVP not found' }) };
+        return respond(404, { message: 'RSVP not found' });
       }
-      
-      await saveAllRSVPs(filtered);
-      return { 
-        statusCode: 200, 
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'RSVP deleted successfully' }) 
-      };
-    } catch (err) {
-      console.error('DELETE error:', err);
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Failed to delete RSVP', error: err.message })
-      };
+
+      await saveRSVPs(filtered);
+      return respond(200, { message: 'RSVP deleted successfully' });
     }
+
+    return respond(405, { message: 'Method not allowed' });
+  } catch (err) {
+    console.error('Unhandled error:', err);
+    return respond(500, { message: 'Internal error', error: err.message });
   }
-  
-  return { 
-    statusCode: 405, 
-    headers: corsHeaders,
-    body: JSON.stringify({ message: 'Method not allowed' }) 
-  };
 };
